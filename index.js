@@ -28,7 +28,13 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use(morgan("dev"));
-
+// Routes Home
+app.get("/", (req, res) => {
+  res.status(200).send({
+    "success":true,
+    "message":"node server is running"
+  });
+});
 //Routes for Auth
 app.use("/api/auth", authRoute);
 app.use("/api/loan", loanRoute);
