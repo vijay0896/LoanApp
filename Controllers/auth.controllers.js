@@ -123,57 +123,6 @@ const ResetPassword = async (req, res) => {
     console.error(error);
   }
 };
-const addBorrow = async (req, res) => {
-  try {
-    const { borrowerName,loanDate, borrowerMobile, borrowerAddress, loanAmount, interestRate } = req.body;
-
-    // Access the authenticated user's ID from req.userID (set in authMiddleware)
-    const userId = req.userID;
-
-    // Create a new borrower record with the authenticated user's ID
-    const borrower = new BorrowerModel({
-      borrowerName,
-      borrowerMobile,
-      borrowerAddress,
-      loanDate,
-      loanAmount,
-      interestRate,
-      userId, // Link the borrower to the authenticated user
-    });
-
-    // Save the borrower details to the database
-    await borrower.save();
-
-    res.status(201).json({
-      msg: "Borrower details added successfully",
-      borrowerId: borrower._id.toString(),
-    });
-  } catch (error) {
-    console.error(`Error adding borrower: ${error}`);
-    return res.status(500).json({ msg: "Internal server error" });
-  }
-};
-
-const getBorrowers = async (req, res) => {
-  try {
-    // Access the authenticated user's ID from req.userID (set in authMiddleware)
-    const userId = req.userID;
-
-    // Find all borrowers associated with this user
-    const borrowers = await BorrowerModel.find({ userId });
-   
-    // If no borrowers found, return a message
-    if (!borrowers || borrowers.length === 0) {
-      return res.status(404).json({ msg: "No borrowers found" });
-    }
-
-    // Return the list of borrowers
-    return res.status(200).json({ borrowers });
-  } catch (error) {
-    console.error(`Error fetching borrowers: ${error}`);
-    return res.status(500).json({ msg: "Internal server error" });
-  }
-};
 
 
 

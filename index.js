@@ -9,6 +9,8 @@ const authRoute = require("./routes/auth.router");
 const loanRoute = require("./routes/loan-router");
 const errorMiddleware = require("./middlewares/error-middleware");
 
+
+
 // dot env
 dotenv.config();
 // connect database // Connect to the database
@@ -19,27 +21,33 @@ const app = express();
 // middlewares
 
 var corsOptions = {
-  origin: "http://localhost:5173",
+  origin: ["http://localhost:8080", "http://127.0.0.1:8080","http://192.168.67.82"],
   methods: "GET,POST,PUT,PATCH,DELETE,HEAD",
   credentials: true,
 };
+
 
 app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use(morgan("dev"));
 // Routes Home
-app.get("/", (req, res) => {
-  res.status(200).send({
-    "success":true,
-    "message":"node server is running"
-  });
-});
+app.use('/public', express.static('public'));
+
+/// This is home route
+// app.get("/", (req, res) => {
+//   res.status(200).send({
+//     "success":true,
+//     "message":"node server is running"
+//   });
+// });
+
 //Routes for Auth
 app.use("/api/auth", authRoute);
 app.use("/api/loan", loanRoute);
 /// PORT
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 8080;
+
 
 app.use(errorMiddleware);
 app.listen(PORT, () => {

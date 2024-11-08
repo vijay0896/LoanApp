@@ -39,7 +39,10 @@ const borrowerSchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-    }, // Reference to the Sahukar (user)
+    },
+    imageUrl:{
+      type: String,
+    },
   },
   { timestamps: true }
 );
