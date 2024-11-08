@@ -34,13 +34,13 @@ app.use(morgan("dev"));
 // Routes Home
 app.use('/public', express.static('public'));
 
-/// This is home route
-// app.get("/", (req, res) => {
-//   res.status(200).send({
-//     "success":true,
-//     "message":"node server is running"
-//   });
-// });
+/ This is home route
+app.get("/", (req, res) => {
+  res.status(200).send({
+    "success":true,
+    "message":"node server is running"
+  });
+});
 
 //Routes for Auth
 app.use("/api/auth", authRoute);
