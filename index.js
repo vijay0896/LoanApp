@@ -34,7 +34,7 @@ app.use(morgan("dev"));
 // Routes Home
 app.use('/public', express.static('public'));
 
-/ This is home route
+// This is home route
 app.get("/", (req, res) => {
   res.status(200).send({
     "success":true,
