@@ -17,8 +17,7 @@ const addBorrow = async (req, res) => {
     const { borrowerName, borrowerMobile, borrowerAddress, loans, imagePublicId, imageUrl } = req.body;
     const userId = req.userID;
 
-    // console.log("Received data:", req.body); // Log the received data to verify imagePublicId and imageUrl
-
+ 
     // Parse loans
     let parsedLoans;
     try {
