@@ -8,9 +8,7 @@ const connectDb = require("./config/db");
 const authRoute = require("./routes/auth.router");
 const loanRoute = require("./routes/loan-router");
 const errorMiddleware = require("./middlewares/error-middleware");
-
-
-
+const cloudinary = require("cloudinary").v2;
 // dot env
 dotenv.config();
 // connect database // Connect to the database
@@ -21,10 +19,17 @@ const app = express();
 // middlewares
 
 var corsOptions = {
-  origin: ["http://localhost:8080", "http://127.0.0.1:8080","http://192.168.67.82"],
+  origin: [
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://192.168.67.82",
+  ],
   methods: "GET,POST,PUT,PATCH,DELETE,HEAD",
   credentials: true,
 };
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 
 
 app.use(cors(corsOptions));
@@ -32,7 +37,7 @@ app.use(express.json());
 
 app.use(morgan("dev"));
 // Routes Home
-app.use('/public', express.static('public'));
+app.use("/public", express.static("public"));
 
 // This is home route
 app.get("/", (req, res) => {
@@ -47,7 +52,6 @@ app.use("/api/auth", authRoute);
 app.use("/api/loan", loanRoute);
 /// PORT
 const PORT = process.env.PORT || 8080;
-
 
 app.use(errorMiddleware);
 app.listen(PORT, () => {

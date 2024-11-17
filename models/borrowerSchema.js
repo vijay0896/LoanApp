@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const { string } = require("zod");
 
 const loanSchema = mongoose.Schema({
   loanAmount: {
@@ -40,8 +41,10 @@ const borrowerSchema = mongoose.Schema(
       ref: "User",
       required: true,
     },
+   
     imageUrl:{
-      type: String,
+      public_id: String,
+      url:String,
     },
   },
   { timestamps: true }

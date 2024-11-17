@@ -3,124 +3,94 @@ const BorrowerModel = require("../models/borrowerSchema");
 const multer = require("multer");
 const { v4: uuidv4 } = require("uuid");
 const path = require("path");
+const cloudinary = require("../utils/cloudinary.config");
+const { Readable } = require("stream");
+// Configure multer to process the file but not store it locally
+const storage = multer.memoryStorage(); // Use memory storage with multer
+const upload = multer({ storage });
 
-// Set up multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "./public/Images/Borrowers_Img"); // Directory for storing uploaded images
-  },
-  filename: (req, file, cb) => {
-    const uniqueFilename = uuidv4();
-    cb(null, uniqueFilename + path.extname(file.originalname));
-  },
-});
+const streamifier = require("streamifier");
 
-const upload = multer({ storage: storage });
 
 const addBorrow = async (req, res) => {
   try {
-    const { borrowerName, borrowerMobile, borrowerAddress, loans } = req.body;
-
-    // Log the received request body for debugging
-    console.log("Received Request Body:", req.body);
-
-    // Access the authenticated user's ID from req.userID (set in authMiddleware)
+    const { borrowerName, borrowerMobile, borrowerAddress, loans, imagePublicId, imageUrl } = req.body;
     const userId = req.userID;
 
-    // Parse loans if it's a string
+    // console.log("Received data:", req.body); // Log the received data to verify imagePublicId and imageUrl
+
+    // Parse loans
     let parsedLoans;
     try {
       parsedLoans = typeof loans === "string" ? JSON.parse(loans) : loans;
+      
     } catch (error) {
       return res.status(400).json({ msg: "Invalid loans format" });
     }
 
-    // Check that parsedLoans is an array with at least one element
     if (!Array.isArray(parsedLoans) || parsedLoans.length === 0) {
       return res.status(400).json({ msg: "Loans must be a non-empty array" });
     }
 
-    // Extract the first loan details from the loans array
     const { loanAmount, interestRate, loanDate } = parsedLoans[0];
+    const parsedLoanAmount = parseFloat(loanAmount.trim());
+    const parsedInterestRate = parseFloat(interestRate.trim());
 
-    // Check if an image file was uploaded
-    const imageUrl = req.file ? req.file.path : null;
+    // console.log("Parsed loan details:", { loanAmount: parsedLoanAmount, interestRate: parsedInterestRate, loanDate });
 
-    // Convert string inputs to numbers if necessary
-    const parsedLoanAmount = parseFloat(loanAmount.trim()); // Trim any spaces
-    const parsedInterestRate = parseFloat(interestRate.trim()); // Trim any spaces
-
-    // Convert borrower details to trimmed and lowercase (for case-insensitive matching)
-    const trimmedBorrowerName = borrowerName.trim().toLowerCase();
-    const trimmedBorrowerMobile = borrowerMobile.trim(); // You might not want to change the case for mobile numbers, just trim spaces.
-
-    console.log("Image URL:", imageUrl);
-
-    // Validate if loanAmount and interestRate are valid numbers
-    if (isNaN(parsedLoanAmount) || isNaN(parsedInterestRate)) {
-      return res
-        .status(400)
-        .json({ msg: "Loan amount and interest rate must be valid numbers." });
+    // Ensure imageUrl is populated
+    let imageData = null;
+    if (imagePublicId && imageUrl) {
+      imageData = { public_id: imagePublicId, url: imageUrl };
+      // console.log("Image data to save:", imageData); // Log image data for debugging
+    } else {
+      // console.log("No image publicId or imageUrl provided"); // Log if image data is missing
     }
 
-    // Find if the borrower already exists by checking trimmed and lowercased borrowerName and borrowerMobile for the current user
     let borrower = await BorrowerModel.findOne({
-      borrowerName: trimmedBorrowerName,
-      borrowerMobile: trimmedBorrowerMobile,
+      borrowerName,
+      borrowerMobile,
       userId,
     });
 
-    // If borrower exists, update the loans array
     if (borrower) {
+      // console.log("Borrower found:", borrower); // Log if borrower exists
       borrower.loans.push({
         loanAmount: parsedLoanAmount,
         loanDate,
         interestRate: parsedInterestRate,
       });
-      // Optionally update the image URL if provided
-      if (imageUrl) {
-        borrower.imageUrl = imageUrl; // Store the image path in the borrower record
+
+      if (imageData) {
+        borrower.imageUrl = imageData; // Save the image data correctly
+        // console.log("Updated borrower with new imageUrl:", borrower.imageUrl); // Log updated imageUrl
       }
     } else {
-      // If borrower does not exist, create a new borrower record
       borrower = new BorrowerModel({
-        borrowerName: trimmedBorrowerName,
-        borrowerMobile: trimmedBorrowerMobile,
-        borrowerAddress: borrowerAddress.trim(), // Trim spaces in address as well
-        loans: [
-          {
-            loanAmount: parsedLoanAmount,
-            loanDate,
-            interestRate: parsedInterestRate,
-          },
-        ], // Submit loan details as an array
-        userId, // Link the borrower to the authenticated user
-        imageUrl,
+        borrowerName,
+        borrowerMobile,
+        borrowerAddress,
+        loans: [{ loanAmount: parsedLoanAmount, loanDate, interestRate: parsedInterestRate }],
+        userId,
+        imageUrl: imageData, // Save the image data correctly
       });
+      // console.log("New borrower created:", borrower); // Log new borrower creation
     }
 
-    // Save the borrower details (new or updated)
     await borrower.save();
+
+    // console.log("Borrower saved with image URL:", borrower.imageUrl); // Log borrower save confirmation
 
     res.status(201).json({
       msg: "Borrower details added successfully",
       borrowerId: borrower._id.toString(),
     });
   } catch (error) {
-    console.error(`Error adding borrower: ${error.message}`);
-
-    // Enhanced error logging for debugging
-    if (error.name === "ValidationError") {
-      console.error("Validation Error:", error.errors);
-      return res.status(400).json({
-        msg: "Validation failed",
-        errorDetails: error.errors,
-      });
-    }
-
+    // console.error(`Error adding borrower: ${error.message}`); // Log detailed error message
     return res.status(500).json({ msg: "Internal server error" });
   }
 };
+
 
 const deleteBorrower = async (req, res) => {
   try {
@@ -139,7 +109,7 @@ const deleteBorrower = async (req, res) => {
 
     return res.status(200).json({ msg: "Borrower deleted successfully" });
   } catch (error) {
-    console.error(`Error deleting borrower: ${error.message}`);
+    // console.error(`Error deleting borrower: ${error.message}`);
     return res.status(500).json({ msg: "Internal server error" });
   }
 };
@@ -178,7 +148,7 @@ const getBorrowers = async (req, res) => {
       return res.status(404).json({ msg: "No borrowers found" });
     }
 
-    const baseUrl = `${req.protocol}://${req.get("host")}/public/images/Borrowers_Img/`;
+    // const baseUrl = `${req.protocol}://${req.get("host")}/public/images/Borrowers_Img/`;
 
     borrowers = borrowers.map((borrower) => {
       // Capitalize names and addresses
@@ -193,24 +163,25 @@ const getBorrowers = async (req, res) => {
         .toLowerCase()
         .replace(/\b\w/g, (char) => char.toUpperCase());
 
-      // Ensure imageUrl is a file name, not a full URL
-      if (borrower.imageUrl) {
-        const filename = borrower.imageUrl.split('/').pop();
-        borrower.imageUrl = baseUrl + filename;
-      } else {
-        borrower.imageUrl = null; // Or set a default image path if needed
-      }
+      // // Ensure imageUrl is a file name, not a full URL
+      // if (borrower.imageUrl) {
+      //   const filename = borrower.imageUrl.split('/').pop();
+      //   borrower.imageUrl = baseUrl + filename;
+      // } else {
+      //   borrower.imageUrl = null; // Or set a default image path if needed
+      // }
+      // Use the Cloudinary URL if available
+      borrower.imageUrl = borrower.imageUrl ? borrower.imageUrl.url : null;
 
       return borrower;
     });
 
     return res.status(200).json({ borrowers });
   } catch (error) {
-    console.error(`Error fetching borrowers: ${error}`);
+    // console.error(`Error fetching borrowers: ${error}`);
     return res.status(500).json({ msg: "Internal server error" });
   }
 };
-
 
 const updateBorrower = async (req, res) => {
   try {
@@ -244,7 +215,7 @@ const updateBorrower = async (req, res) => {
 
     res.status(200).json({ msg: "Borrower details updated successfully" });
   } catch (error) {
-    console.error(`Error updating borrower: ${error.message}`);
+    // console.error(`Error updating borrower: ${error.message}`);
     return res.status(500).json({ msg: "Internal server error" });
   }
 };
@@ -283,7 +254,7 @@ const updateBorrowerLoan = async (req, res) => {
       }
     );
 
-    console.log("Update result:", result);
+    // console.log("Update result:", result);
 
     if (result.modifiedCount === 0) {
       return res.status(404).json({ msg: "Loan not found or no changes made" });
@@ -293,7 +264,7 @@ const updateBorrowerLoan = async (req, res) => {
       .status(200)
       .json({ msg: "Borrower's loan details updated successfully" });
   } catch (error) {
-    console.error(`Error updating borrower's loan: ${error.message}`);
+    // console.error(`Error updating borrower's loan: ${error.message}`);
     return res.status(500).json({ msg: "Internal server error" });
   }
 };
