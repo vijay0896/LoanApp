@@ -1,5 +1,6 @@
 const userModel = require("../models/user-models");
 const BorrowerModel = require("../models/borrowerSchema");
+
 const multer = require("multer");
 const { v4: uuidv4 } = require("uuid");
 const path = require("path");
@@ -10,19 +11,31 @@ const storage = multer.memoryStorage(); // Use memory storage with multer
 const upload = multer({ storage });
 
 const streamifier = require("streamifier");
+const twilio = require("twilio");
 
+// twillio
+const accountSid = "ACf7f48214cafd5c62ac18a679dd9ef4a1";
+const authToken = "61a3c7ac9162a3f0c34ae315867f2c64";
+const client = new twilio(accountSid, authToken);
 
 const addBorrow = async (req, res) => {
   try {
-    const { borrowerName, borrowerMobile, borrowerAddress, loans, imagePublicId, imageUrl } = req.body;
+    const {
+      borrowerName,
+      borrowerMobile,
+      borrowerAddress,
+      loans,
+      imagePublicId,
+      imageUrl,
+    } = req.body;
     const userId = req.userID;
 
- 
+    // console.log("Received data:", req.body); // Log the received data to verify imagePublicId and imageUrl
+
     // Parse loans
     let parsedLoans;
     try {
       parsedLoans = typeof loans === "string" ? JSON.parse(loans) : loans;
-      
     } catch (error) {
       return res.status(400).json({ msg: "Invalid loans format" });
     }
@@ -69,7 +82,13 @@ const addBorrow = async (req, res) => {
         borrowerName,
         borrowerMobile,
         borrowerAddress,
-        loans: [{ loanAmount: parsedLoanAmount, loanDate, interestRate: parsedInterestRate }],
+        loans: [
+          {
+            loanAmount: parsedLoanAmount,
+            loanDate,
+            interestRate: parsedInterestRate,
+          },
+        ],
         userId,
         imageUrl: imageData, // Save the image data correctly
       });
@@ -77,6 +96,22 @@ const addBorrow = async (req, res) => {
     }
 
     await borrower.save();
+    // Send SMS to the borrower
+    const formattedMobile = borrowerMobile.startsWith("+")
+      ? borrowerMobile
+      : `+91${borrowerMobile}`;
+    const formattedLoanAmount = parsedLoanAmount.toLocaleString("en-IN");
+    try {
+      const message = await client.messages.create({
+        body: `Hi ${borrowerName}, your loan of ${formattedLoanAmount} with an interest rate of ${parsedInterestRate}% per month has been added successfully on ${loanDate}. Thank you for using our service!`,
+        from: "+12564884387",
+        to: formattedMobile,
+      });
+
+      console.log("SMS sent successfully:", message.sid);
+    } catch (smsError) {
+      console.error("Error sending SMS:", smsError.message);
+    }
 
     // console.log("Borrower saved with image URL:", borrower.imageUrl); // Log borrower save confirmation
 
