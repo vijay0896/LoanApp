@@ -14,8 +14,8 @@ const streamifier = require("streamifier");
 const twilio = require("twilio");
 
 // twillio
-const accountSid = "ACf7f48214cafd5c62ac18a679dd9ef4a1";
-const authToken = "61a3c7ac9162a3f0c34ae315867f2c64";
+const accountSid = process.env.ACCOUNT_SID;
+const authToken = process.env.AUTH_TOKEN;
 const client = new twilio(accountSid, authToken);
 
 const addBorrow = async (req, res) => {
